@@ -380,6 +380,40 @@ export default function PuzzleRandomPage({
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const dragSourceRef = useRef<'pool' | 'placed' | null>(null);
 
+    // Audio refs
+    const bgMusicRef = useRef<HTMLAudioElement | null>(null);
+    const sfxCorrectRef = useRef<HTMLAudioElement | null>(null);
+    const sfxFailRef = useRef<HTMLAudioElement | null>(null);
+    const sfxCompleteRef = useRef<HTMLAudioElement | null>(null);
+
+    // Initialize audio elements
+    useEffect(() => {
+        bgMusicRef.current = new Audio('/sfx/bg-music.mp3');
+        bgMusicRef.current.loop = true;
+        bgMusicRef.current.volume = 0.4;
+        sfxCorrectRef.current = new Audio('/sfx/correct.mp3');
+        sfxFailRef.current = new Audio('/sfx/fail.mp3');
+        sfxCompleteRef.current = new Audio('/sfx/complete-puzzle.mp3');
+        return () => { bgMusicRef.current?.pause(); bgMusicRef.current = null; };
+    }, []);
+
+    // Play/pause background music
+    useEffect(() => {
+        if (!bgMusicRef.current) return;
+        if (isMusicOn && !isSolved && !isGameOver) {
+            bgMusicRef.current.play().catch(() => { });
+        } else {
+            bgMusicRef.current.pause();
+        }
+    }, [isMusicOn, isSolved, isGameOver]);
+
+    // Helper to play SFX
+    const playSfx = (audioRef: React.RefObject<HTMLAudioElement | null>) => {
+        if (!isSfxOn || !audioRef.current) return;
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(() => { });
+    };
+
     // Format time
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -430,14 +464,37 @@ export default function PuzzleRandomPage({
         })();
     }, [imageSrc, rows, cols]);
 
-    // Check if puzzle is solved
+    // Check if puzzle is solved (using connected group BFS)
     useEffect(() => {
-        if (pieces.length === 0 || poolItems.length > 0) return;
-        const lockedCount = Array.from(placedPieces.values()).filter(p => p.isLocked).length;
-        if (lockedCount === pieces.length) {
-            setIsSolved(true);
+        if (pieces.length === 0) return;
+        if (placedPieces.size === pieces.length && poolItems.length === 0) {
+            const firstId = pieces[0].id;
+            const group = new Set<string>();
+            const queue = [firstId];
+            while (queue.length > 0) {
+                const current = queue.shift()!;
+                if (group.has(current)) continue;
+                group.add(current);
+                const placed = placedPieces.get(current);
+                if (placed?.connectedGroup) {
+                    placed.connectedGroup.forEach(id => { if (!group.has(id)) queue.push(id); });
+                }
+            }
+            if (group.size === pieces.length) {
+                setIsSolved(true);
+                bgMusicRef.current?.pause();
+                playSfx(sfxCompleteRef);
+            }
         }
-    }, [placedPieces, poolItems, pieces]);
+    }, [placedPieces, poolItems, pieces, isSfxOn]);
+
+    // Play fail SFX when game over (time ran out)
+    useEffect(() => {
+        if (isGameOver && !isSolved) {
+            bgMusicRef.current?.pause();
+            playSfx(sfxFailRef);
+        }
+    }, [isGameOver, isSolved, isSfxOn]);
 
     // Get all pieces in a connected group
     const getConnectedGroup = useCallback((pieceId: string): string[] => {
@@ -579,6 +636,10 @@ export default function PuzzleRandomPage({
                     const { shouldSnap, snapPosition, neighbors } = checkAndSnapToNeighbors(primaryPieceId, position);
                     const finalPos = shouldSnap ? snapPosition : position;
 
+                    if (shouldSnap && neighbors.length > 0) {
+                        playSfx(sfxCorrectRef);
+                    }
+
                     setPlacedPieces(prev => {
                         const newMap = new Map(prev);
                         if (shouldSnap && neighbors.length > 0) {
@@ -604,6 +665,13 @@ export default function PuzzleRandomPage({
                 if (placed) {
                     const { shouldSnap, snapPosition, neighbors } = checkAndSnapToNeighbors(primaryPieceId, placed.position);
                     if (shouldSnap && neighbors.length > 0) {
+                        // Only play SFX if we're forming a NEW connection (not already connected)
+                        const existingGroup = new Set(dragState.pieceIds);
+                        const hasNewNeighbor = neighbors.some(n => !existingGroup.has(n));
+                        if (hasNewNeighbor) {
+                            playSfx(sfxCorrectRef);
+                        }
+
                         const offsetX = snapPosition.x - placed.position.x;
                         const offsetY = snapPosition.y - placed.position.y;
                         setPlacedPieces(prev => {
@@ -726,6 +794,17 @@ export default function PuzzleRandomPage({
 
         .btn-3d { transition: all 0.1s ease; position: relative; top: 0; }
         .btn-3d:active { transform: translateY(4px); border-bottom-width: 0px !important; margin-bottom: 4px; }
+
+        @keyframes confetti-fall {
+          0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        @keyframes pop-in {
+          0% { transform: scale(0.5); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .confetti-piece { animation: confetti-fall linear forwards; position: absolute; top: 0; }
+        .pop-in { animation: pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
       `}</style>
 
             <div className="game-container">
@@ -961,6 +1040,94 @@ export default function PuzzleRandomPage({
                         })()}
                     </aside>
                 </div>
+                {/* Game over / Completion overlay */}
+                {(isSolved || isGameOver) && (
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                        {/* Confetti particles */}
+                        {isSolved && (
+                            <>
+                                {Array.from({ length: 20 }).map((_, i) => (
+                                    <div
+                                        key={i}
+                                        className="confetti-piece rounded-sm"
+                                        style={{
+                                            left: `${Math.random() * 100}%`,
+                                            width: `${8 + Math.random() * 12}px`,
+                                            height: `${8 + Math.random() * 12}px`,
+                                            backgroundColor: ['#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899'][i % 6],
+                                            animationDuration: `${2 + Math.random() * 3}s`,
+                                            animationDelay: `${Math.random() * 1}s`,
+                                        }}
+                                    />
+                                ))}
+                            </>
+                        )}
+
+                        <div className="pop-in bg-white rounded-[2.5rem] p-10 shadow-2xl text-center max-w-md mx-4 relative overflow-hidden border-4 border-white/20">
+                            {/* Decorative gradient top */}
+                            <div className="absolute top-0 left-0 w-full h-20 bg-linear-to-b from-yellow-100/60 to-transparent pointer-events-none"></div>
+
+                            {isSolved ? (
+                                <>
+                                    {/* Star decorations */}
+                                    <div className="absolute top-4 left-6 text-yellow-400 text-2xl animate-bounce" style={{ animationDelay: '0.2s' }}>⭐</div>
+                                    <div className="absolute top-8 right-8 text-yellow-400 text-lg animate-bounce" style={{ animationDelay: '0.5s' }}>✨</div>
+                                    <div className="absolute top-4 right-16 text-yellow-400 text-2xl animate-bounce" style={{ animationDelay: '0.8s' }}>🌟</div>
+
+                                    <div className="relative z-10">
+                                        <div className="w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-yellow-200">
+                                            <span className="material-icons-round text-white text-5xl">emoji_events</span>
+                                        </div>
+                                        <h2 className="text-4xl font-black text-slate-800 mb-2">Selamat! 🎉</h2>
+                                        <p className="text-lg text-slate-500 mb-2">Puzzle berhasil diselesaikan!</p>
+                                        <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-5 py-2 rounded-full font-bold text-lg mb-6">
+                                            <span className="material-icons-round text-xl">timer</span>
+                                            {formatTime(timeLimit - timeRemaining)}
+                                        </div>
+                                        <div className="flex gap-3 justify-center">
+                                            <button
+                                                onClick={() => window.location.reload()}
+                                                className="btn-3d bg-yellow-400 hover:bg-yellow-500 border-b-[5px] border-yellow-500 text-white px-8 py-3 rounded-full font-bold text-lg transition-colors flex items-center gap-2"
+                                            >
+                                                <span className="material-icons-round">replay</span> Main Lagi
+                                            </button>
+                                            <button
+                                                onClick={() => window.location.href = '/'}
+                                                className="btn-3d bg-slate-200 hover:bg-slate-300 border-b-[5px] border-slate-300 text-slate-600 px-6 py-3 rounded-full font-bold text-lg transition-colors flex items-center gap-2"
+                                            >
+                                                <span className="material-icons-round">home</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="relative z-10">
+                                        <div className="w-20 h-20 bg-red-400 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-red-200">
+                                            <span className="material-icons-round text-white text-5xl">alarm</span>
+                                        </div>
+                                        <h2 className="text-4xl font-black text-slate-800 mb-2">Waktu Habis! ⏰</h2>
+                                        <p className="text-lg text-slate-500 mb-6">Coba lagi untuk menyelesaikan puzzle!</p>
+                                        <div className="flex gap-3 justify-center">
+                                            <button
+                                                onClick={() => window.location.reload()}
+                                                className="btn-3d bg-blue-500 hover:bg-blue-600 border-b-[5px] border-blue-600 text-white px-8 py-3 rounded-full font-bold text-lg transition-colors flex items-center gap-2"
+                                            >
+                                                <span className="material-icons-round">replay</span> Coba Lagi
+                                            </button>
+                                            <button
+                                                onClick={() => window.location.href = '/'}
+                                                className="btn-3d bg-slate-200 hover:bg-slate-300 border-b-[5px] border-slate-300 text-slate-600 px-6 py-3 rounded-full font-bold text-lg transition-colors flex items-center gap-2"
+                                            >
+                                                <span className="material-icons-round">home</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Pause Menu Overlay */}
                 {isPaused && (
