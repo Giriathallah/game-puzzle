@@ -374,6 +374,7 @@ export default function PuzzleRandomPage({
     const [isPaused, setIsPaused] = useState(false);
     const [isMusicOn, setIsMusicOn] = useState(true);
     const [isSfxOn, setIsSfxOn] = useState(true);
+    const [windowSize, setWindowSize] = useState({ w: typeof window !== 'undefined' ? window.innerWidth : 1920, h: typeof window !== 'undefined' ? window.innerHeight : 1080 });
 
     const canvasRef = useRef<HTMLDivElement>(null);
     const rafRef = useRef<number | null>(null);
@@ -385,6 +386,14 @@ export default function PuzzleRandomPage({
     const sfxCorrectRef = useRef<HTMLAudioElement | null>(null);
     const sfxFailRef = useRef<HTMLAudioElement | null>(null);
     const sfxCompleteRef = useRef<HTMLAudioElement | null>(null);
+
+    // Track window size for responsive puzzle sizing
+    useEffect(() => {
+        const handleResize = () => setWindowSize({ w: window.innerWidth, h: window.innerHeight });
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Initialize audio elements
     useEffect(() => {
@@ -551,7 +560,8 @@ export default function PuzzleRandomPage({
         const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
         dragSourceRef.current = 'pool';
         const piece = pieces.find(p => p.id === pieceId);
-        const maxSize = 500;
+        const sidebarW = windowSize.w >= 1280 ? 360 : 280;
+        const maxSize = Math.min(800, windowSize.w - sidebarW - 160, windowSize.h - 250);
         const sc = Math.min(1, maxSize / Math.max(imageDimensions.width, imageDimensions.height));
         const offsetX = piece ? (piece.width * sc) / 2 : 0;
         const offsetY = piece ? (piece.height * sc) / 2 : 0;
@@ -568,7 +578,8 @@ export default function PuzzleRandomPage({
         if (!rect) return;
         const placed = placedPieces.get(pieceId);
         if (!placed) return;
-        const maxSize = 500;
+        const sidebarW = windowSize.w >= 1280 ? 360 : 280;
+        const maxSize = Math.min(800, windowSize.w - sidebarW - 160, windowSize.h - 250);
         const sc = Math.min(1, maxSize / Math.max(imageDimensions.width, imageDimensions.height));
         const mouseX = (clientX - rect.left) / sc;
         const mouseY = (clientY - rect.top) / sc;
@@ -582,7 +593,8 @@ export default function PuzzleRandomPage({
     useEffect(() => {
         if (!dragState) return;
 
-        const maxSize = 500;
+        const sidebarW = windowSize.w >= 1280 ? 360 : 280;
+        const maxSize = Math.min(800, windowSize.w - sidebarW - 160, windowSize.h - 250);
         const sc = Math.min(1, maxSize / Math.max(imageDimensions.width, imageDimensions.height));
 
         const onMove = (e: MouseEvent | TouchEvent) => {
@@ -751,7 +763,8 @@ export default function PuzzleRandomPage({
         );
     }
 
-    const maxSize = 500;
+    const sidebarW = windowSize.w >= 1280 ? 360 : 280;
+    const maxSize = Math.min(800, windowSize.w - sidebarW - 160, windowSize.h - 250);
     const scale = Math.min(1, maxSize / Math.max(imageDimensions.width, imageDimensions.height));
     const displayWidth = imageDimensions.width * scale;
     const displayHeight = imageDimensions.height * scale;

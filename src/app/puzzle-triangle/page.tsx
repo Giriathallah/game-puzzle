@@ -366,6 +366,7 @@ export default function PuzzleTriangle({
   const [isPaused, setIsPaused] = useState(false);
   const [isMusicOn, setIsMusicOn] = useState(true);
   const [isSfxOn, setIsSfxOn] = useState(true);
+  const [windowSize, setWindowSize] = useState({ w: typeof window !== 'undefined' ? window.innerWidth : 1920, h: typeof window !== 'undefined' ? window.innerHeight : 1080 });
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -375,6 +376,14 @@ export default function PuzzleTriangle({
   const sfxCorrectRef = useRef<HTMLAudioElement | null>(null);
   const sfxFailRef = useRef<HTMLAudioElement | null>(null);
   const sfxCompleteRef = useRef<HTMLAudioElement | null>(null);
+
+  // Track window size for responsive puzzle sizing
+  useEffect(() => {
+    const handleResize = () => setWindowSize({ w: window.innerWidth, h: window.innerHeight });
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Initialize audio elements
   useEffect(() => {
@@ -566,7 +575,8 @@ export default function PuzzleTriangle({
       return;
     }
 
-    const maxSize = 500;
+    const sidebarW = windowSize.w >= 1280 ? 360 : 280;
+    const maxSize = Math.min(800, windowSize.w - sidebarW - 160, windowSize.h - 250);
     const sc = Math.min(1, maxSize / Math.max(imageDimensions.width, imageDimensions.height));
 
     if (dragSource === 'pool') {
@@ -745,7 +755,8 @@ export default function PuzzleTriangle({
     );
   }
 
-  const maxSize = 500;
+  const sidebarW = windowSize.w >= 1280 ? 360 : 280;
+  const maxSize = Math.min(800, windowSize.w - sidebarW - 160, windowSize.h - 250);
   const scale = Math.min(1, maxSize / Math.max(imageDimensions.width, imageDimensions.height));
   const displayWidth = imageDimensions.width * scale;
   const displayHeight = imageDimensions.height * scale;

@@ -460,6 +460,7 @@ export default function PuzzleGame({
     const [isPaused, setIsPaused] = useState(false);
     const [isMusicOn, setIsMusicOn] = useState(true);
     const [isSfxOn, setIsSfxOn] = useState(true);
+    const [windowSize, setWindowSize] = useState({ w: typeof window !== 'undefined' ? window.innerWidth : 1920, h: typeof window !== 'undefined' ? window.innerHeight : 1080 });
 
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -469,6 +470,14 @@ export default function PuzzleGame({
     const sfxFalseRef = useRef<HTMLAudioElement | null>(null);
     const sfxFailRef = useRef<HTMLAudioElement | null>(null);
     const sfxCompleteRef = useRef<HTMLAudioElement | null>(null);
+
+    // Track window size for responsive puzzle sizing
+    useEffect(() => {
+        const handleResize = () => setWindowSize({ w: window.innerWidth, h: window.innerHeight });
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Initialize audio elements
     useEffect(() => {
@@ -649,8 +658,9 @@ export default function PuzzleGame({
     const gridWidth = pieceWidth * cols;
     const gridHeight = pieceHeight * rows;
 
-    const maxDisplayWidth = 550;
-    const maxDisplayHeight = 550;
+    const sidebarWidth = windowSize.w >= 1280 ? 360 : 280;
+    const maxDisplayWidth = Math.min(800, windowSize.w - sidebarWidth - 160, windowSize.h - 250);
+    const maxDisplayHeight = maxDisplayWidth;
     const scale = Math.min(1, maxDisplayWidth / gridWidth, maxDisplayHeight / gridHeight);
     const displayWidth = gridWidth * scale;
     const displayHeight = gridHeight * scale;
