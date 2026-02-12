@@ -1,0 +1,14 @@
+// app/puzzle/page.tsx
+import PuzzleGame from "@/components/puzzleGame";
+
+export default function PuzzlePage() {
+    return (
+        <div>
+            {/* Mode partial */}
+            <PuzzleGame />
+
+            {/* Atau mode empty */}
+            {/* <PuzzleGame imageSrc="/images/contoh.jpg" mode="empty" /> */}
+        </div>
+    );
+}

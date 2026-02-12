@@ -1,0 +1,28 @@
+rencana nya web puzzle ini akan punya alur user seperti ini
+
+
+
+
+
+
+
+halaman main menu
+
+
+
+explanation page (jadi di halaman ini user akan di jelaskan mengenai puzzle yang akan di tentukan misal kuda, maka akan ada card ada gambarnya dan menjelaskan tentang subject tersebut, hingga suara)
+
+
+
+puzzle game. DI HALAMAN ITU ADA PUZZLE AREA, PIECES REMAINING AREA, TIMER, BUTTON (WHEN OPEN IT WILL POP OUT LIKE PAUSE MENU IN THE GAME THE MENU WILL BE RESUME, MUSIC/SFX OFF/ON, BACK TO HOME)
+
+
+
+terdapat  4 tempat / habitat / wilayah. user harus milih dari 4 tersebut subject yang sedang dibahas dan dibuat puzzle nya seharusnya berada dimana
+
+
+
+ada hasil puzzle tadi dan tempat / later belakang yang benar yang sudah dipilih di halaman sebelumnya. tujuan halaman ini adalah user harus drag hasil puzzle itu ke latar belakang tempat di posisi yang benar misal latar belakang yang benar peternakan dan hasil puzzle nya gambar kuda. User harus drag kuda ke tempat kuda seharusnya berada misal dibawah pohon bukan di langit / di atas pohon
+
+
+

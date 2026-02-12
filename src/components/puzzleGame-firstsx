@@ -1,0 +1,304 @@
+// components/PuzzleGameFixedV3.tsx
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import {
+    DndContext,
+    closestCorners,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+    DragStartEvent,
+    DragOverlay,
+    useDroppable,
+    useDraggable,
+} from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
+
+// Types
+type Piece = {
+    id: string;
+    src: string;
+    correctIndex: number;
+};
+
+type PuzzleMode = 'partial' | 'empty';
+
+// splitImage (sama)
+async function splitImage(imageSrc: string, rows: number, cols: number): Promise<Piece[]> {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = imageSrc;
+
+        img.onload = () => {
+            const pieceWidth = img.width / cols;
+            const pieceHeight = img.height / rows;
+            const pieces: Piece[] = [];
+
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = pieceWidth;
+                    canvas.height = pieceHeight;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) return reject(new Error('Canvas context error'));
+
+                    ctx.drawImage(img, col * pieceWidth, row * pieceHeight, pieceWidth, pieceHeight, 0, 0, pieceWidth, pieceHeight);
+
+                    const index = row * cols + col;
+                    pieces.push({
+                        id: `piece-${index}`,
+                        src: canvas.toDataURL('image/png'),
+                        correctIndex: index,
+                    });
+                }
+            }
+            resolve(pieces);
+        };
+
+        img.onerror = () => reject(new Error('Gagal load gambar'));
+    });
+}
+
+// Draggable Piece Component (untuk pool & grid)
+function DraggablePiece({ id, src, isInGrid = false }: { id: string; src: string; isInGrid?: boolean }) {
+    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id });
+
+    const style = {
+        transform: CSS.Translate.toString(transform),
+        opacity: isDragging ? 0.7 : 1,
+        scale: isDragging ? 1.05 : 1,
+        cursor: isDragging ? 'grabbing' : 'grab',
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="w-full h-full rounded overflow-hidden border border-gray-300 shadow-sm">
+            <img src={src} alt="" className="w-full h-full object-cover pointer-events-none" />
+        </div>
+    );
+}
+
+// Droppable Slot Component - extracted to avoid calling hooks inside .map()
+function DroppableSlot({
+    index,
+    pieceId,
+    pieceSrc
+}: {
+    index: number;
+    pieceId: string;
+    pieceSrc: string | undefined;
+}) {
+    const { setNodeRef, isOver } = useDroppable({ id: `slot-${index}` });
+    const isEmpty = pieceId === '';
+
+    return (
+        <div
+            ref={setNodeRef}
+            id={`slot-${index}`}
+            className={`aspect-square border-2 rounded-md overflow-hidden transition-colors ${isEmpty
+                ? isOver
+                    ? 'border-green-500 bg-green-100'
+                    : 'border-dashed border-gray-400 bg-gray-200 hover:bg-gray-300'
+                : 'border-blue-500 bg-white'
+                }`}
+        >
+            {!isEmpty && pieceId && (
+                <DraggablePiece id={pieceId} src={pieceSrc || ''} isInGrid />
+            )}
+        </div>
+    );
+}
+
+export default function PuzzleGame({
+    imageSrc = '/assets1000.jpg', // pastikan gambar ini square (misal 600x600) untuk hasil terbaik
+    rows = 3,
+    cols = 3,
+    mode = 'partial' as PuzzleMode,
+}) {
+    const [pieces, setPieces] = useState<Piece[]>([]);
+    const [gridItems, setGridItems] = useState<string[]>(Array(rows * cols).fill('')); // '' = kosong
+    const [poolItems, setPoolItems] = useState<string[]>([]);
+    const [activeId, setActiveId] = useState<string | null>(null);
+    const [isSolved, setIsSolved] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    const totalSlots = rows * cols;
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }) // biar tidak drag terlalu sensitif
+    );
+
+    useEffect(() => {
+        (async () => {
+            try {
+                setLoading(true);
+                const splitPieces = await splitImage(imageSrc, rows, cols);
+                setPieces(splitPieces);
+
+                const shuffledPieces = [...splitPieces].sort(() => Math.random() - 0.5);
+                const shuffledIds = shuffledPieces.map(p => p.id);
+
+                if (mode === 'partial') {
+                    const placedCount = Math.floor(totalSlots * 0.4) + 2;
+                    const placedPieces = shuffledPieces.slice(0, placedCount);
+
+                    const newGrid = Array(totalSlots).fill('');
+                    placedPieces.forEach(piece => {
+                        newGrid[piece.correctIndex] = piece.id; // selalu di posisi benar
+                    });
+
+                    const remainingIds = shuffledIds.filter(id => !placedPieces.some(p => p.id === id));
+
+                    setGridItems(newGrid);
+                    setPoolItems(remainingIds);
+                } else {
+                    setGridItems(Array(totalSlots).fill(''));
+                    setPoolItems(shuffledIds);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Gagal memuat gambar. Cek path /assets.jpg dan console.');
+            } finally {
+                setLoading(false);
+            }
+        })();
+    }, [imageSrc, rows, cols, mode]);
+
+    // Check solved
+    useEffect(() => {
+        if (poolItems.length === 0 && !gridItems.includes('')) {
+            const correct = gridItems.every((id, idx) => pieces.find(p => p.id === id)?.correctIndex === idx);
+            if (correct) {
+                setIsSolved(true);
+                alert('Puzzle selesai! 🎉');
+            }
+        }
+    }, [gridItems, poolItems, pieces]);
+
+    const handleDragStart = (event: DragStartEvent) => {
+        setActiveId(event.active.id as string);
+    };
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        setActiveId(null);
+        if (!over) return;
+
+        const activePieceId = active.id as string;
+        const piece = pieces.find(p => p.id === activePieceId);
+        if (!piece) return;
+
+        if (over.id.toString().startsWith('slot-')) {
+            // Drop ke grid slot
+            const targetIndex = parseInt(over.id.toString().replace('slot-', ''), 10);
+
+            // Validasi
+            if (gridItems[targetIndex] !== '') {
+                alert('Slot sudah terisi!');
+                return;
+            }
+            if (piece.correctIndex !== targetIndex) {
+                alert('Posisi salah!');
+                return;
+            }
+
+            // Place
+            setGridItems(prev => {
+                const newGrid = [...prev];
+                newGrid[targetIndex] = activePieceId;
+                return newGrid;
+            });
+            setPoolItems(prev => prev.filter(id => id !== activePieceId));
+        } else if (over.id === 'pool') {
+            // Drop balik ke pool (dari grid)
+            const fromGridIndex = gridItems.indexOf(activePieceId);
+            if (fromGridIndex !== -1) {
+                setGridItems(prev => {
+                    const newGrid = [...prev];
+                    newGrid[fromGridIndex] = '';
+                    return newGrid;
+                });
+                setPoolItems(prev => [...prev, activePieceId]);
+            }
+        }
+    };
+
+    const activePiece = activeId ? pieces.find(p => p.id === activeId) : null;
+
+    if (loading) return <div className="p-10 text-center">Memuat puzzle...</div>;
+
+    return (
+        <div className="max-w-5xl mx-auto p-6">
+            <h1 className="text-3xl font-bold text-center mb-6">
+                Puzzle {mode === 'partial' ? '(Lengkapi yang Ada)' : '(Susun dari Nol)'}
+            </h1>
+
+            {isSolved && <div className="bg-green-100 p-6 mb-6 rounded text-center text-2xl font-bold">Puzzle Selesai! 🎉</div>}
+
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCorners}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+            >
+                <div className="flex flex-col md:flex-row gap-2">
+                    {/* AREA PUZZLE */}
+                    <div className="flex-1">
+                        <h2 className="text-xl font-semibold mb-4">Area Puzzle</h2>
+                        <div
+                            className="grid bg-gray-100 p-4 rounded-xl shadow-inner mx-auto"
+                            style={{
+                                gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                                maxWidth: '500px',
+                                gap: '2px',
+                                aspectRatio: `${cols}/${rows}`,
+                            }}
+                        >
+                            {gridItems.map((id, index) => (
+                                <DroppableSlot
+                                    key={index}
+                                    index={index}
+                                    pieceId={id}
+                                    pieceSrc={pieces.find(p => p.id === id)?.src}
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* POOL */}
+                    <div className="flex-1">
+                        <h2 className="text-xl font-semibold mb-4">Piece Tersisa</h2>
+                        <div
+                            id="pool"
+                            className="grid grid-cols-4 gap-2 p-3 border-2 border-dashed border-gray-400 rounded-lg min-h-[100px]"
+                        >
+                            {poolItems.map(id => {
+                                const piece = pieces.find(p => p.id === id);
+                                return piece ? (
+                                    <div key={id} className="w-16 h-16">
+                                        <DraggablePiece id={id} src={piece.src} />
+                                    </div>
+                                ) : null;
+                            })}
+                        </div>
+                    </div>
+                </div>
+
+                <DragOverlay dropAnimation={null}>
+                    {activePiece && (
+                        <div className="w-20 h-20 shadow-xl rounded-md overflow-hidden opacity-90 border-2 border-blue-500">
+                            <img src={activePiece.src} className="w-full h-full object-cover" />
+                        </div>
+                    )}
+                </DragOverlay>
+            </DndContext>
+
+            <div className="text-center mt-10">
+                <button onClick={() => window.location.reload()} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-medium">
+                    Main Ulang
+                </button>
+            </div>
+        </div>
+    );
+}
