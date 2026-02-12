@@ -649,8 +649,8 @@ export default function PuzzleGame({
     const gridWidth = pieceWidth * cols;
     const gridHeight = pieceHeight * rows;
 
-    const maxDisplayWidth = 750;
-    const maxDisplayHeight = 750;
+    const maxDisplayWidth = 550;
+    const maxDisplayHeight = 550;
     const scale = Math.min(1, maxDisplayWidth / gridWidth, maxDisplayHeight / gridHeight);
     const displayWidth = gridWidth * scale;
     const displayHeight = gridHeight * scale;
@@ -668,6 +668,8 @@ export default function PuzzleGame({
         .game-container {
           width: 100vw;
           height: 100vh;
+          max-width: 1600px;
+          margin: 0 auto;
           position: relative;
           overflow: hidden;
           background: linear-gradient(180deg, #e0f2fe 0%, #dcfce7 100%);
@@ -767,8 +769,8 @@ export default function PuzzleGame({
                 </div>
 
                 {/* Sun */}
-                <div className="absolute top-10 right-[380px] pointer-events-none z-0">
-                    <div className="w-24 h-24 bg-yellow-200 rounded-full shadow-[0_0_40px_rgba(253,224,71,0.6)] animate-pulse"></div>
+                <div className="absolute top-10 right-[350px] pointer-events-none z-0">
+                    <div className="w-16 h-16 xl:w-24 xl:h-24 bg-yellow-200 rounded-full shadow-[0_0_40px_rgba(253,224,71,0.6)] animate-pulse"></div>
                 </div>
 
                 <DndContext
@@ -779,10 +781,10 @@ export default function PuzzleGame({
                 >
                     <div className="relative z-10 flex h-full w-full">
                         {/* Main puzzle area */}
-                        <main className="flex-1 flex flex-col relative h-full items-center justify-center p-8 order-1">
+                        <main className="flex-1 flex flex-col relative h-full items-center justify-center p-4 xl:p-8 order-1">
                             {/* Top navigation */}
                             <div className="absolute top-8 z-20 w-full flex justify-center pointer-events-none">
-                                <div className="relative flex items-center gap-12 pointer-events-auto bg-white/40 backdrop-blur-sm py-4 px-10 rounded-full border border-white/60 shadow-sm">
+                                <div className="relative flex items-center gap-6 xl:gap-12 pointer-events-auto bg-white/40 backdrop-blur-sm py-3 xl:py-4 px-6 xl:px-10 rounded-full border border-white/60 shadow-sm">
                                     <div className="absolute inset-x-12 top-1/2 h-1 -mt-0.5 border-t-2 border-dashed border-slate-300 z-0"></div>
 
                                     <div className="relative z-10 flex flex-col items-center gap-2 group cursor-pointer opacity-60 hover:opacity-100 transition-opacity">
@@ -816,14 +818,14 @@ export default function PuzzleGame({
                             </div>
 
                             {/* Puzzle board */}
-                            <div className="relative z-10 transform transition-transform origin-center mt-12">
+                            <div className="relative z-10 transform transition-transform origin-center mt-8 xl:mt-12">
                                 <div className="puzzle-tray-thick relative inline-block">
                                     {/* Decorative buttons */}
-                                    <div className="absolute -top-6 -left-6 w-20 h-20 bg-pink-400 rounded-full border-[6px] border-white shadow-lg z-20 flex items-center justify-center transform hover:scale-105 transition-transform cursor-pointer">
-                                        <span className="material-icons-round text-white text-3xl drop-shadow-md">favorite</span>
+                                    <div className="absolute -top-4 -left-4 xl:-top-6 xl:-left-6 w-14 h-14 xl:w-20 xl:h-20 bg-pink-400 rounded-full border-4 xl:border-[6px] border-white shadow-lg z-20 flex items-center justify-center transform hover:scale-105 transition-transform cursor-pointer">
+                                        <span className="material-icons-round text-white text-xl xl:text-3xl drop-shadow-md">favorite</span>
                                     </div>
-                                    <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-green-400 rounded-full border-[6px] border-white shadow-lg z-20 flex items-center justify-center transform hover:scale-105 transition-transform cursor-pointer">
-                                        <span className="material-icons-round text-white text-3xl drop-shadow-md">star</span>
+                                    <div className="absolute -bottom-4 -right-4 xl:-bottom-6 xl:-right-6 w-14 h-14 xl:w-20 xl:h-20 bg-green-400 rounded-full border-4 xl:border-[6px] border-white shadow-lg z-20 flex items-center justify-center transform hover:scale-105 transition-transform cursor-pointer">
+                                        <span className="material-icons-round text-white text-xl xl:text-3xl drop-shadow-md">star</span>
                                     </div>
 
                                     <div
@@ -920,10 +922,10 @@ export default function PuzzleGame({
                         </main>
 
                         {/* Sidebar */}
-                        <aside className="flex-shrink-0 w-[360px] h-full relative z-20 order-2 flex">
+                        <aside className="flex-shrink-0 w-[280px] xl:w-[360px] h-full relative z-20 order-2 flex">
                             <div className="w-full h-full sidebar-shape shadow-2xl overflow-hidden glass-panel flex flex-col relative">
                                 {/* Header */}
-                                <div className="pt-10 pb-6 px-8 flex flex-col gap-6 z-10">
+                                <div className="pt-6 xl:pt-10 pb-4 xl:pb-6 px-5 xl:px-8 flex flex-col gap-4 xl:gap-6 z-10">
                                     <div className="flex items-center justify-between w-full">
                                         <button
                                             onClick={() => setIsPaused(true)}
@@ -932,8 +934,8 @@ export default function PuzzleGame({
                                             <span className="material-icons-round text-3xl">menu</span>
                                         </button>
                                         <div className="flex items-center gap-3 bg-white px-6 py-3 rounded-2xl shadow-sm border border-blue-100">
-                                            <span className="material-icons-round text-green-400 text-4xl">timer</span>
-                                            <span className={`text-4xl font-bold tracking-tight tabular-nums font-display ${timeRemaining < 30 ? 'text-red-600' : 'text-slate-700'
+                                            <span className="material-icons-round text-green-400 text-3xl xl:text-4xl">timer</span>
+                                            <span className={`text-3xl xl:text-4xl font-bold tracking-tight tabular-nums font-display ${timeRemaining < 30 ? 'text-red-600' : 'text-slate-700'
                                                 }`}>
                                                 {formatTime(timeRemaining)}
                                             </span>
@@ -944,7 +946,7 @@ export default function PuzzleGame({
                                     <div className="flex flex-col items-center justify-center w-full mt-2">
                                         <div className="bg-gradient-to-br from-white to-blue-50 w-full rounded-3xl p-5 shadow-sm border border-white/50 flex items-center justify-between px-6">
                                             <div className="flex flex-col items-start">
-                                                <span className="text-5xl font-black text-slate-700 tracking-tight font-display leading-none">
+                                                <span className="text-4xl xl:text-5xl font-black text-slate-700 tracking-tight font-display leading-none">
                                                     {remainingPieces} / {totalSlots}
                                                 </span>
                                                 <span className="text-sm font-bold text-slate-400 uppercase tracking-wider mt-2">Tersisa</span>
@@ -957,7 +959,7 @@ export default function PuzzleGame({
                                 </div>
 
                                 {/* Scrollable pieces area */}
-                                <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-8 relative z-10 w-full">
+                                <div className="flex-1 overflow-y-auto custom-scrollbar px-4 xl:px-6 pb-6 xl:pb-8 relative z-10 w-full">
                                     <div className="flex flex-col gap-10 items-center pt-4">
                                         {poolItems.map((id) => {
                                             const piece = pieces.find(p => p.id === id);
